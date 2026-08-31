@@ -34,7 +34,7 @@ interface Lead {
   signal: string;
   osmUrl: string;
   gmapsUrl: string;
-  gmapsPinUrl?: string;
+  gmapsSearchUrl?: string;
   problemDescription: string;
   pitch: string;
   lat?: number;
@@ -109,28 +109,25 @@ export default function Home() {
       setAuditResult(data);
     } catch (e) {
       setAuditResult({ error: "Failed to audit website connection." });
-    } fontally {
+    } finally {
       setAuditLoading(false);
     }
   };
 
   const exportCSV = () => {
     if (!payload || !payload.leads || payload.leads.length === 0) return;
-    const headers = ["Business Name", "Category", "Location", "Phone Number", "Signal", "Google Maps Search URL", "Google Maps Pin URL", "OSM Map Listing", "Problem Description", "Devify Pitch"];
+    const headers = ["Business Name", "Category", "Location", "Phone Number", "Signal", "Exact Google Maps Pin URL", "OSM Map Listing", "Problem Description", "Devify Pitch"];
     const lines = [headers.join(",")];
     
     payload.leads.forEach(l => {
-      const mapsSearch = l.gmapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.businessName + ' ' + l.location)}`;
-      const mapsPin = l.gmapsPinUrl || (l.lat && l.lon ? `https://www.google.com/maps?q=${l.lat},${l.lon}` : mapsSearch);
-      
+      const exactPinUrl = l.lat && l.lon ? `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lon}` : (l.gmapsUrl || '');
       const row = [
         `"${(l.businessName || '').replace(/"/g, '""')}"`,
         `"${(l.category || '').replace(/"/g, '""')}"`,
         `"${(l.location || '').replace(/"/g, '""')}"`,
         `"${(l.phone || '').replace(/"/g, '""')}"`,
         `"${(l.signal || '').replace(/"/g, '""')}"`,
-        `"${mapsSearch.replace(/"/g, '""')}"`,
-        `"${mapsPin.replace(/"/g, '""')}"`,
+        `"${exactPinUrl.replace(/"/g, '""')}"`,
         `"${(l.osmUrl || '').replace(/"/g, '""')}"`,
         `"${(l.problemDescription || '').replace(/"/g, '""')}"`,
         `"${(l.pitch || '').replace(/"/g, '""')}"`
@@ -142,7 +139,7 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `Devify_Unique_Branded_Leads_${payload.date || 'today'}.csv`);
+    link.setAttribute("download", `Devify_ExactPin_Leads_${payload.date || 'today'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -239,7 +236,7 @@ export default function Home() {
             <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <h1 className="text-xl font-extrabold text-white tracking-tight">Uniquely Named Local Businesses (No Website Found)</h1>
-                <p className="text-slate-400 text-xs mt-1">Queried live from OpenStreetMap Overpass API. Filtered for specific branded local businesses, cafes, real estate, clinics, & garages.</p>
+                <p className="text-slate-400 text-xs mt-1">Queried live from OpenStreetMap Overpass API. Every lead includes an exact single-venue pin link to Google Maps.</p>
               </div>
 
               <div className="flex items-center gap-3 shrink-0">
@@ -305,8 +302,9 @@ export default function Home() {
             {!loading && payload && payload.leads && payload.leads.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {payload.leads.map((l) => {
-                  const mapsSearch = l.gmapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.businessName + ' ' + l.location)}`;
-                  const mapsPin = l.gmapsPinUrl || (l.lat && l.lon ? `https://www.google.com/maps?q=${l.lat},${l.lon}` : mapsSearch);
+                  const exactPinUrl = l.lat && l.lon 
+                    ? `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lon}` 
+                    : (l.gmapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.businessName + ' ' + l.location)}`);
 
                   return (
                     <div key={l.id} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition space-y-4 flex flex-col justify-between relative overflow-hidden">
@@ -337,20 +335,12 @@ export default function Home() {
 
                           <div className="flex flex-col gap-1 pt-1.5 border-t border-slate-900">
                             <a 
-                              href={mapsSearch} 
+                              href={exactPinUrl} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="text-emerald-400 font-bold hover:underline flex items-center gap-1"
                             >
-                              📍 Real Place Search on Google Maps <ExternalLink className="w-3 h-3" />
-                            </a>
-                            <a 
-                              href={mapsPin} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-amber-300 font-bold hover:underline flex items-center gap-1 text-[11px]"
-                            >
-                              📌 Drop Direct Coordinate Pin on Maps <ExternalLink className="w-3 h-3" />
+                              📍 Open Exact Google Maps Place Pin <ExternalLink className="w-3 h-3" />
                             </a>
                           </div>
 
@@ -388,12 +378,12 @@ export default function Home() {
                         </button>
 
                         <a
-                          href={mapsSearch}
+                          href={exactPinUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-emerald-400 hover:text-emerald-300 font-mono font-bold flex items-center gap-1"
                         >
-                          Open Google Maps <ExternalLink className="w-3 h-3" />
+                          Open Exact Maps Pin <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
 

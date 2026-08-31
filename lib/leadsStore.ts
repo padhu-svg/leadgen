@@ -11,7 +11,7 @@ export interface Lead {
   signal: string;
   osmUrl: string;
   gmapsUrl: string;
-  gmapsPinUrl: string;
+  gmapsSearchUrl: string;
   problemDescription: string;
   pitch: string;
   lat?: number;
@@ -36,7 +36,6 @@ const OVERPASS_ENDPOINTS = [
   "https://overpass.nchc.org.tw/api/interpreter"
 ];
 
-// Generic non-distinct names to exclude
 const GENERIC_EXCLUSION_SET = new Set([
   "clinic", "dental clinic", "medical clinic", "restaurant", "cafe", "coffee shop", 
   "salon", "barber", "shop", "bakery", "doctor", "auto repair", "garage", "gym",
@@ -166,7 +165,6 @@ out body 350;`;
     if (name && !hasWebsite) {
       const lowerName = name.toLowerCase();
 
-      // Filter out purely generic names like "Dental Clinic" or single-word non-brand titles
       if (GENERIC_EXCLUSION_SET.has(lowerName) || name.split(/\s+/).length < 2) {
         continue;
       }
@@ -179,34 +177,38 @@ out body 350;`;
       };
 
       const phone = tags.phone || tags['contact:phone'] || 'N/A';
+      const houseNumber = tags['addr:housenumber'] || '';
       const street = tags['addr:street'] || tags['addr:full'] || '';
       const suburb = tags['addr:suburb'] || tags['addr:district'] || '';
       const city = tags['addr:city'] || 'Bengaluru';
       
-      const location = `${street} ${suburb} ${city}`.replace(/\s+/g, ' ').trim();
+      const locationParts = [houseNumber, street, suburb, city].filter(Boolean);
+      const location = locationParts.join(', ') || 'Bengaluru';
+      
       const osmId = e.id;
       const osmUrl = `https://www.openstreetmap.org/node/${osmId}`;
       const lat = e.lat;
       const lon = e.lon;
 
-      // 1. Search Query: Exact Brand Name + Location
-      const gmapsQuery = `${name} ${location}`;
-      const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gmapsQuery)}`;
-      
-      // 2. Direct Pin Link: Exact Latitude and Longitude Pin
-      const gmapsPinUrl = lat && lon ? `https://www.google.com/maps?q=${lat},${lon}` : gmapsUrl;
+      // 1. Direct Pin Link on Google Maps (opens EXACT latitude and longitude location directly)
+      const gmapsUrl = lat && lon 
+        ? `https://www.google.com/maps/search/?api=1&query=${lat},${lon}` 
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + location)}`;
+
+      // 2. Full Name + Detailed Street Search Link
+      const gmapsSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + location)}`;
 
       qualified.push({
         id: `osm-${osmId}`,
         osmId,
         businessName: name,
         category: meta.display,
-        location: location || 'Bengaluru',
+        location,
         phone,
         signal: "No website found",
         osmUrl,
         gmapsUrl,
-        gmapsPinUrl,
+        gmapsSearchUrl,
         problemDescription: meta.problem,
         pitch: meta.pitch,
         lat,
