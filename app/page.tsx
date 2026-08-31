@@ -33,7 +33,8 @@ interface Lead {
   phone: string;
   signal: string;
   osmUrl: string;
-  gmapsUrl?: string;
+  gmapsUrl: string;
+  gmapsPinUrl?: string;
   problemDescription: string;
   pitch: string;
   lat?: number;
@@ -108,25 +109,28 @@ export default function Home() {
       setAuditResult(data);
     } catch (e) {
       setAuditResult({ error: "Failed to audit website connection." });
-    } finally {
+    } fontally {
       setAuditLoading(false);
     }
   };
 
   const exportCSV = () => {
     if (!payload || !payload.leads || payload.leads.length === 0) return;
-    const headers = ["Business Name", "Category", "Location", "Phone Number", "Signal", "Google Maps URL", "OSM Map Listing", "Problem Description", "Devify Pitch"];
+    const headers = ["Business Name", "Category", "Location", "Phone Number", "Signal", "Google Maps Search URL", "Google Maps Pin URL", "OSM Map Listing", "Problem Description", "Devify Pitch"];
     const lines = [headers.join(",")];
     
     payload.leads.forEach(l => {
-      const mapsLink = l.gmapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.businessName + ' ' + l.location + ' Bengaluru')}`;
+      const mapsSearch = l.gmapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.businessName + ' ' + l.location)}`;
+      const mapsPin = l.gmapsPinUrl || (l.lat && l.lon ? `https://www.google.com/maps?q=${l.lat},${l.lon}` : mapsSearch);
+      
       const row = [
         `"${(l.businessName || '').replace(/"/g, '""')}"`,
         `"${(l.category || '').replace(/"/g, '""')}"`,
         `"${(l.location || '').replace(/"/g, '""')}"`,
         `"${(l.phone || '').replace(/"/g, '""')}"`,
         `"${(l.signal || '').replace(/"/g, '""')}"`,
-        `"${mapsLink.replace(/"/g, '""')}"`,
+        `"${mapsSearch.replace(/"/g, '""')}"`,
+        `"${mapsPin.replace(/"/g, '""')}"`,
         `"${(l.osmUrl || '').replace(/"/g, '""')}"`,
         `"${(l.problemDescription || '').replace(/"/g, '""')}"`,
         `"${(l.pitch || '').replace(/"/g, '""')}"`
@@ -138,7 +142,7 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `Devify_NoWebsite_Leads_${payload.date || 'today'}.csv`);
+    link.setAttribute("download", `Devify_Unique_Branded_Leads_${payload.date || 'today'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -168,7 +172,7 @@ export default function Home() {
             </div>
             <div>
               <span className="font-bold text-lg text-white tracking-tight">DEVIFY LABS</span>
-              <span className="text-xs text-emerald-400 font-mono ml-2 px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800">Client Acquisition & Audit Portal</span>
+              <span className="text-xs text-emerald-400 font-mono ml-2 px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800">Client Acquisition Portal</span>
             </div>
           </div>
 
@@ -234,8 +238,8 @@ export default function Home() {
             {/* HERO BAR */}
             <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
-                <h1 className="text-xl font-extrabold text-white tracking-tight">Real Local Businesses (No Website Found)</h1>
-                <p className="text-slate-400 text-xs mt-1">Queried live from OpenStreetMap Overpass API. Filtered specifically for un-webbed local services, cafes, real estate, clinics, & garages.</p>
+                <h1 className="text-xl font-extrabold text-white tracking-tight">Uniquely Named Local Businesses (No Website Found)</h1>
+                <p className="text-slate-400 text-xs mt-1">Queried live from OpenStreetMap Overpass API. Filtered for specific branded local businesses, cafes, real estate, clinics, & garages.</p>
               </div>
 
               <div className="flex items-center gap-3 shrink-0">
@@ -301,7 +305,9 @@ export default function Home() {
             {!loading && payload && payload.leads && payload.leads.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {payload.leads.map((l) => {
-                  const gmapsUrl = l.gmapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.businessName + ' ' + l.location + ' Bengaluru')}`;
+                  const mapsSearch = l.gmapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.businessName + ' ' + l.location)}`;
+                  const mapsPin = l.gmapsPinUrl || (l.lat && l.lon ? `https://www.google.com/maps?q=${l.lat},${l.lon}` : mapsSearch);
+
                   return (
                     <div key={l.id} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition space-y-4 flex flex-col justify-between relative overflow-hidden">
                       <div className="space-y-3">
@@ -320,7 +326,7 @@ export default function Home() {
                         {/* BUSINESS NAME */}
                         <h3 className="text-lg font-bold text-white tracking-tight leading-snug">{l.businessName}</h3>
 
-                        {/* SIGNAL & DIRECT MAPS NAVIGATION LINKS */}
+                        {/* SIGNAL & ACCURATE GOOGLE MAPS NAVIGATION LINKS */}
                         <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2 text-xs font-mono">
                           <div className="text-rose-400 font-bold flex items-center justify-between">
                             <span>🚨 Signal: {l.signal}</span>
@@ -329,20 +335,28 @@ export default function Home() {
                             </a>
                           </div>
 
-                          <div className="flex items-center justify-between pt-1 border-t border-slate-900">
+                          <div className="flex flex-col gap-1 pt-1.5 border-t border-slate-900">
                             <a 
-                              href={gmapsUrl} 
+                              href={mapsSearch} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="text-emerald-400 font-bold hover:underline flex items-center gap-1"
                             >
-                              📍 View Details on Google Maps <ExternalLink className="w-3 h-3" />
+                              📍 Real Place Search on Google Maps <ExternalLink className="w-3 h-3" />
+                            </a>
+                            <a 
+                              href={mapsPin} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-amber-300 font-bold hover:underline flex items-center gap-1 text-[11px]"
+                            >
+                              📌 Drop Direct Coordinate Pin on Maps <ExternalLink className="w-3 h-3" />
                             </a>
                           </div>
 
                           {l.phone && l.phone !== 'N/A' && (
-                            <div className="text-amber-300 flex items-center gap-1 pt-1">
-                              <Phone className="w-3 h-3" /> Phone: {l.phone}
+                            <div className="text-slate-300 flex items-center gap-1 pt-1">
+                              <Phone className="w-3 h-3 text-emerald-400" /> Phone: {l.phone}
                             </div>
                           )}
                         </div>
@@ -374,7 +388,7 @@ export default function Home() {
                         </button>
 
                         <a
-                          href={gmapsUrl}
+                          href={mapsSearch}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-emerald-400 hover:text-emerald-300 font-mono font-bold flex items-center gap-1"

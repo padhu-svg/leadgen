@@ -11,6 +11,7 @@ export interface Lead {
   signal: string;
   osmUrl: string;
   gmapsUrl: string;
+  gmapsPinUrl: string;
   problemDescription: string;
   pitch: string;
   lat?: number;
@@ -34,6 +35,13 @@ const OVERPASS_ENDPOINTS = [
   "https://overpass.kumi.systems/api/interpreter",
   "https://overpass.nchc.org.tw/api/interpreter"
 ];
+
+// Generic non-distinct names to exclude
+const GENERIC_EXCLUSION_SET = new Set([
+  "clinic", "dental clinic", "medical clinic", "restaurant", "cafe", "coffee shop", 
+  "salon", "barber", "shop", "bakery", "doctor", "auto repair", "garage", "gym",
+  "hotel", "spa", "store", "supermarket", "boutique", "fitness centre"
+]);
 
 declare global {
   var _leadsCache: DailyLeadsResponse | null;
@@ -152,10 +160,17 @@ out body 350;`;
 
   for (const e of elements) {
     const tags = e.tags || {};
-    const name = tags.name;
+    const name = (tags.name || '').trim();
     const hasWebsite = Boolean(tags.website || tags['contact:website']);
 
     if (name && !hasWebsite) {
+      const lowerName = name.toLowerCase();
+
+      // Filter out purely generic names like "Dental Clinic" or single-word non-brand titles
+      if (GENERIC_EXCLUSION_SET.has(lowerName) || name.split(/\s+/).length < 2) {
+        continue;
+      }
+
       const rawCategoryKey = (tags.amenity || tags.shop || tags.office || tags.leisure || 'local_business').toLowerCase();
       const meta = CATEGORY_MAP[rawCategoryKey] || {
         display: rawCategoryKey.replace('_', ' ').toUpperCase(),
@@ -164,26 +179,38 @@ out body 350;`;
       };
 
       const phone = tags.phone || tags['contact:phone'] || 'N/A';
-      const location = tags['addr:suburb'] || tags['addr:district'] || tags['addr:street'] || 'Bengaluru';
+      const street = tags['addr:street'] || tags['addr:full'] || '';
+      const suburb = tags['addr:suburb'] || tags['addr:district'] || '';
+      const city = tags['addr:city'] || 'Bengaluru';
+      
+      const location = `${street} ${suburb} ${city}`.replace(/\s+/g, ' ').trim();
       const osmId = e.id;
       const osmUrl = `https://www.openstreetmap.org/node/${osmId}`;
-      const gmapsQuery = `${name} ${location} Bengaluru`;
+      const lat = e.lat;
+      const lon = e.lon;
+
+      // 1. Search Query: Exact Brand Name + Location
+      const gmapsQuery = `${name} ${location}`;
       const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gmapsQuery)}`;
+      
+      // 2. Direct Pin Link: Exact Latitude and Longitude Pin
+      const gmapsPinUrl = lat && lon ? `https://www.google.com/maps?q=${lat},${lon}` : gmapsUrl;
 
       qualified.push({
         id: `osm-${osmId}`,
         osmId,
         businessName: name,
         category: meta.display,
-        location,
+        location: location || 'Bengaluru',
         phone,
         signal: "No website found",
         osmUrl,
         gmapsUrl,
+        gmapsPinUrl,
         problemDescription: meta.problem,
         pitch: meta.pitch,
-        lat: e.lat,
-        lon: e.lon
+        lat,
+        lon
       });
     }
   }
