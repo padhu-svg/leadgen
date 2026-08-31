@@ -10,6 +10,7 @@ export interface Lead {
   phone: string;
   signal: string;
   osmUrl: string;
+  gmapsUrl: string;
   problemDescription: string;
   pitch: string;
   lat?: number;
@@ -25,7 +26,6 @@ export interface DailyLeadsResponse {
   error?: string | null;
 }
 
-// On Vercel Serverless, write to /tmp directory to prevent read-only filesystem crashes
 const CACHE_FILE = process.env.VERCEL ? '/tmp/leads_cache.json' : path.join(process.cwd(), 'leads_cache.json');
 const DEFAULT_BBOX = process.env.TARGET_CITY_BBOX || "12.88,77.50,13.10,77.72"; // Bangalore Bounding Box
 
@@ -35,7 +35,6 @@ const OVERPASS_ENDPOINTS = [
   "https://overpass.nchc.org.tw/api/interpreter"
 ];
 
-// In-Memory Global Cache for Serverless Instances
 declare global {
   var _leadsCache: DailyLeadsResponse | null;
 }
@@ -168,6 +167,8 @@ out body 350;`;
       const location = tags['addr:suburb'] || tags['addr:district'] || tags['addr:street'] || 'Bengaluru';
       const osmId = e.id;
       const osmUrl = `https://www.openstreetmap.org/node/${osmId}`;
+      const gmapsQuery = `${name} ${location} Bengaluru`;
+      const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gmapsQuery)}`;
 
       qualified.push({
         id: `osm-${osmId}`,
@@ -178,6 +179,7 @@ out body 350;`;
         phone,
         signal: "No website found",
         osmUrl,
+        gmapsUrl,
         problemDescription: meta.problem,
         pitch: meta.pitch,
         lat: e.lat,

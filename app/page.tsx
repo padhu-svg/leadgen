@@ -21,7 +21,6 @@ import {
   ShoppingBag,
   Car,
   Dumbbell,
-  Layers,
   Utensils
 } from 'lucide-react';
 
@@ -34,6 +33,7 @@ interface Lead {
   phone: string;
   signal: string;
   osmUrl: string;
+  gmapsUrl?: string;
   problemDescription: string;
   pitch: string;
   lat?: number;
@@ -115,16 +115,18 @@ export default function Home() {
 
   const exportCSV = () => {
     if (!payload || !payload.leads || payload.leads.length === 0) return;
-    const headers = ["Business Name", "Category", "Location", "Phone Number", "Signal", "OSM Map Listing", "Problem Description", "Devify Pitch"];
+    const headers = ["Business Name", "Category", "Location", "Phone Number", "Signal", "Google Maps URL", "OSM Map Listing", "Problem Description", "Devify Pitch"];
     const lines = [headers.join(",")];
     
     payload.leads.forEach(l => {
+      const mapsLink = l.gmapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.businessName + ' ' + l.location + ' Bengaluru')}`;
       const row = [
         `"${(l.businessName || '').replace(/"/g, '""')}"`,
         `"${(l.category || '').replace(/"/g, '""')}"`,
         `"${(l.location || '').replace(/"/g, '""')}"`,
         `"${(l.phone || '').replace(/"/g, '""')}"`,
         `"${(l.signal || '').replace(/"/g, '""')}"`,
+        `"${mapsLink.replace(/"/g, '""')}"`,
         `"${(l.osmUrl || '').replace(/"/g, '""')}"`,
         `"${(l.problemDescription || '').replace(/"/g, '""')}"`,
         `"${(l.pitch || '').replace(/"/g, '""')}"`
@@ -298,77 +300,92 @@ export default function Home() {
             {/* LEADS CARDS GRID */}
             {!loading && payload && payload.leads && payload.leads.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {payload.leads.map((l) => (
-                  <div key={l.id} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition space-y-4 flex flex-col justify-between relative overflow-hidden">
-                    <div className="space-y-3">
-                      
-                      {/* CATEGORY & LOCATION HEADER */}
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800 flex items-center gap-1.5">
-                          {getCategoryIcon(l.category)}
-                          {l.category}
-                        </span>
-                        <span className="text-slate-400 font-mono flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-slate-500" /> {l.location}
-                        </span>
-                      </div>
-
-                      {/* BUSINESS NAME */}
-                      <h3 className="text-lg font-bold text-white tracking-tight leading-snug">{l.businessName}</h3>
-
-                      {/* SIGNAL & RECON DETAIL */}
-                      <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1.5 text-xs font-mono">
-                        <div className="text-rose-400 font-bold flex items-center justify-between">
-                          <span>🚨 Signal: {l.signal}</span>
-                          <a href={l.osmUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline flex items-center gap-1">
-                            OSM Record <ExternalLink className="w-3 h-3" />
-                          </a>
+                {payload.leads.map((l) => {
+                  const gmapsUrl = l.gmapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.businessName + ' ' + l.location + ' Bengaluru')}`;
+                  return (
+                    <div key={l.id} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition space-y-4 flex flex-col justify-between relative overflow-hidden">
+                      <div className="space-y-3">
+                        
+                        {/* CATEGORY & LOCATION HEADER */}
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800 flex items-center gap-1.5">
+                            {getCategoryIcon(l.category)}
+                            {l.category}
+                          </span>
+                          <span className="text-slate-400 font-mono flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-slate-500" /> {l.location}
+                          </span>
                         </div>
-                        {l.phone && l.phone !== 'N/A' && (
-                          <div className="text-amber-300 flex items-center gap-1">
-                            <Phone className="w-3 h-3" /> Contact Phone: {l.phone}
+
+                        {/* BUSINESS NAME */}
+                        <h3 className="text-lg font-bold text-white tracking-tight leading-snug">{l.businessName}</h3>
+
+                        {/* SIGNAL & DIRECT MAPS NAVIGATION LINKS */}
+                        <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2 text-xs font-mono">
+                          <div className="text-rose-400 font-bold flex items-center justify-between">
+                            <span>🚨 Signal: {l.signal}</span>
+                            <a href={l.osmUrl} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:underline flex items-center gap-1">
+                              OSM <ExternalLink className="w-3 h-3" />
+                            </a>
                           </div>
-                        )}
-                      </div>
 
-                      {/* PROBLEM DESCRIPTION */}
-                      <div className="space-y-1">
-                        <div className="text-xs font-bold text-slate-400 font-mono">Problem / Growth Bottleneck:</div>
-                        <p className="text-xs text-slate-300 leading-relaxed font-sans">{l.problemDescription}</p>
-                      </div>
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-900">
+                            <a 
+                              href={gmapsUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-emerald-400 font-bold hover:underline flex items-center gap-1"
+                            >
+                              📍 View Details on Google Maps <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
 
-                      {/* HOW DEVIFY HELPS */}
-                      <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-800/60 space-y-1">
-                        <div className="text-xs font-bold text-emerald-400 font-mono flex items-center gap-1.5">
-                          <Wrench className="w-3.5 h-3.5 text-emerald-400" /> How Devify Labs Can Help:
+                          {l.phone && l.phone !== 'N/A' && (
+                            <div className="text-amber-300 flex items-center gap-1 pt-1">
+                              <Phone className="w-3 h-3" /> Phone: {l.phone}
+                            </div>
+                          )}
                         </div>
-                        <p className="text-xs text-slate-200 leading-relaxed font-sans">{l.pitch}</p>
+
+                        {/* PROBLEM DESCRIPTION */}
+                        <div className="space-y-1">
+                          <div className="text-xs font-bold text-slate-400 font-mono">Problem / Growth Bottleneck:</div>
+                          <p className="text-xs text-slate-300 leading-relaxed font-sans">{l.problemDescription}</p>
+                        </div>
+
+                        {/* HOW DEVIFY HELPS */}
+                        <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-800/60 space-y-1">
+                          <div className="text-xs font-bold text-emerald-400 font-mono flex items-center gap-1.5">
+                            <Wrench className="w-3.5 h-3.5 text-emerald-400" /> How Devify Labs Can Help:
+                          </div>
+                          <p className="text-xs text-slate-200 leading-relaxed font-sans">{l.pitch}</p>
+                        </div>
+
+                      </div>
+
+                      {/* ACTION FOOTER */}
+                      <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                        <button
+                          onClick={() => copyPitch(l.pitch, l.id)}
+                          className="text-xs text-emerald-400 bg-emerald-950 border border-emerald-800 px-3 py-1.5 rounded-lg hover:bg-emerald-900 transition flex items-center gap-1.5 font-mono cursor-pointer"
+                        >
+                          {copiedId === l.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedId === l.id ? 'Copied Pitch!' : 'Copy Pitch'}
+                        </button>
+
+                        <a
+                          href={gmapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-400 hover:text-emerald-300 font-mono font-bold flex items-center gap-1"
+                        >
+                          Open Google Maps <ExternalLink className="w-3 h-3" />
+                        </a>
                       </div>
 
                     </div>
-
-                    {/* ACTION FOOTER */}
-                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                      <button
-                        onClick={() => copyPitch(l.pitch, l.id)}
-                        className="text-xs text-emerald-400 bg-emerald-950 border border-emerald-800 px-3 py-1.5 rounded-lg hover:bg-emerald-900 transition flex items-center gap-1.5 font-mono cursor-pointer"
-                      >
-                        {copiedId === l.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        {copiedId === l.id ? 'Copied Pitch!' : 'Copy Pitch'}
-                      </button>
-
-                      <a
-                        href={l.osmUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-slate-400 hover:text-white font-mono flex items-center gap-1"
-                      >
-                        View Details <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -438,7 +455,7 @@ Do you have any upcoming builds where an extra dev team could help ease bandwidt
 
       {/* FOOTER */}
       <footer className="border-t border-slate-800/80 bg-slate-950 py-4 text-center text-xs text-slate-500 font-mono">
-        Devify Labs Client Acquisition Portal • Powered by OpenStreetMap Overpass API • {new Date().getFullYear()}
+        Devify Labs Client Acquisition Portal • Powered by OpenStreetMap & Google Maps • {new Date().getFullYear()}
       </footer>
 
     </div>
