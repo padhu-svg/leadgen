@@ -25,7 +25,8 @@ export interface DailyLeadsResponse {
   error?: string | null;
 }
 
-const CACHE_FILE = path.join(process.cwd(), 'leads_cache.json');
+// On Vercel Serverless, write to /tmp directory to prevent read-only filesystem crashes
+const CACHE_FILE = process.env.VERCEL ? '/tmp/leads_cache.json' : path.join(process.cwd(), 'leads_cache.json');
 const DEFAULT_BBOX = process.env.TARGET_CITY_BBOX || "12.88,77.50,13.10,77.72"; // Bangalore Bounding Box
 
 const OVERPASS_ENDPOINTS = [
@@ -34,7 +35,11 @@ const OVERPASS_ENDPOINTS = [
   "https://overpass.nchc.org.tw/api/interpreter"
 ];
 
-// Category metadata & copy generator
+// In-Memory Global Cache for Serverless Instances
+declare global {
+  var _leadsCache: DailyLeadsResponse | null;
+}
+
 const CATEGORY_MAP: Record<string, { display: string; problem: string; pitch: string }> = {
   cafe: {
     display: "Café & Coffee Shop",
@@ -181,10 +186,7 @@ out body 350;`;
     }
   }
 
-  // Shuffle / rotate leads to ensure category mix and picking 30
   const shuffled = qualified.sort(() => 0.5 - Math.random());
-  
-  // Pick top 30 unique business names
   const uniqueLeads: Lead[] = [];
   const seenNames = new Set<string>();
 
@@ -204,18 +206,24 @@ out body 350;`;
   return uniqueLeads;
 }
 
-// CACHE DISK / MEMORY STORE MANAGEMENT
 export function getStoredLeads(): DailyLeadsResponse | null {
+  if (globalThis._leadsCache) {
+    return globalThis._leadsCache;
+  }
+
   try {
     if (fs.existsSync(CACHE_FILE)) {
       const data = fs.readFileSync(CACHE_FILE, 'utf8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      globalThis._leadsCache = parsed;
+      return parsed;
     }
   } catch (e) {}
   return null;
 }
 
 export function saveStoredLeads(leadsResponse: DailyLeadsResponse): void {
+  globalThis._leadsCache = leadsResponse;
   try {
     fs.writeFileSync(CACHE_FILE, JSON.stringify(leadsResponse, null, 2), 'utf8');
   } catch (e) {}
