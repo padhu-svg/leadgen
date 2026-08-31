@@ -29,8 +29,7 @@ export function buildHighTicketOverpassQuery(bbox: string = DEFAULT_BBOX): strin
 out body 250;`;
 }
 
-// Fast sub-2.5-second fetch with AbortController
-async function fetchSingleEndpoint(endpoint: string, body: string, timeoutMs: number = 2500): Promise<any> {
+async function fetchSingleEndpoint(endpoint: string, body: string, timeoutMs: number = 2000): Promise<any> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -53,32 +52,34 @@ async function fetchSingleEndpoint(endpoint: string, body: string, timeoutMs: nu
         return data;
       }
     }
-    throw new Error(`HTTP ${res.status}`);
   } catch (e) {
     clearTimeout(timer);
-    throw e;
   }
+  return null;
 }
 
 export async function fetchLeadsFromOverpass(bbox: string = DEFAULT_BBOX): Promise<EnrichedLead[]> {
-  const query = buildHighTicketOverpassQuery(bbox);
-  const body = `data=${encodeURIComponent(query)}`;
-
   try {
-    // Race all endpoints simultaneously with 2.5s hard limit
-    const responseData = await Promise.any(
-      OVERPASS_ENDPOINTS.map(ep => fetchSingleEndpoint(ep, body, 2500))
-    );
+    const query = buildHighTicketOverpassQuery(bbox);
+    const body = `data=${encodeURIComponent(query)}`;
 
-    if (responseData && responseData.elements && responseData.elements.length > 0) {
-      const rawElements: RawOSMElement[] = responseData.elements;
-      const processed = processAndSortRawElements(rawElements);
-      if (processed.length > 0) {
-        return processed.slice(0, 30);
+    // Try endpoints sequentially with 2.0s fast timeout
+    for (const endpoint of OVERPASS_ENDPOINTS) {
+      try {
+        const responseData = await fetchSingleEndpoint(endpoint, body, 2000);
+        if (responseData && responseData.elements && responseData.elements.length > 0) {
+          const rawElements: RawOSMElement[] = responseData.elements;
+          const processed = processAndSortRawElements(rawElements);
+          if (processed && processed.length > 0) {
+            return processed.slice(0, 30);
+          }
+        }
+      } catch (e) {
+        continue;
       }
     }
   } catch (e) {
-    // If all endpoints fail or time out (>2.5s), return fallback immediately
+    // Fail-safe catch
   }
 
   return FALLBACK_HIGH_TICKET_LEADS;
