@@ -11,6 +11,7 @@ export interface Lead {
   signal: string;
   osmUrl: string;
   gmapsUrl: string;
+  gmapsPinUrl: string;
   problemDescription: string;
   pitch: string;
   lat?: number;
@@ -113,7 +114,6 @@ const CATEGORY_MAP: Record<string, { display: string; problem: string; pitch: st
   }
 };
 
-// Fast single-endpoint fetch helper with timeout
 async function fetchOverpassEndpoint(endpoint: string, body: string, timeoutMs: number = 6000): Promise<any> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -153,7 +153,6 @@ out body 250;`;
 
   const body = `data=${encodeURIComponent(query)}`;
 
-  // Parallel race over endpoints for sub-3-second response
   let responseData: any = null;
   for (const endpoint of OVERPASS_ENDPOINTS) {
     try {
@@ -206,10 +205,17 @@ out body 250;`;
       const lat = e.lat;
       const lon = e.lon;
 
-      // Exact pin search query
+      const nameEnc = encodeURIComponent(name);
+      
+      // 1. Google Maps Search centered on exact coordinates @lat,lon at 17z zoom level
       const gmapsUrl = lat && lon 
-        ? `https://www.google.com/maps/search/?api=1&query=${lat},${lon}` 
-        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + location)}`;
+        ? `https://www.google.com/maps/search/${nameEnc}/@${lat},${lon},17z` 
+        : `https://www.google.com/maps/search/?api=1&query=${nameEnc}+${encodeURIComponent(location)}`;
+
+      // 2. Direct pin drop link
+      const gmapsPinUrl = lat && lon 
+        ? `https://maps.google.com/?q=${lat},${lon}` 
+        : gmapsUrl;
 
       qualified.push({
         id: `osm-${osmId}`,
@@ -221,6 +227,7 @@ out body 250;`;
         signal: "No website found",
         osmUrl,
         gmapsUrl,
+        gmapsPinUrl,
         problemDescription: meta.problem,
         pitch: meta.pitch,
         lat,
