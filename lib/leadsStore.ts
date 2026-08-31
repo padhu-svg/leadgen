@@ -17,9 +17,8 @@ declare global {
   var _leadsCache: DailyLeadsResponse | null;
 }
 
-// Optimized, Timeout-Safe High-Ticket Overpass QL Query
 export function buildHighTicketOverpassQuery(bbox: string = DEFAULT_BBOX): string {
-  return `[out:json][timeout:12];
+  return `[out:json][timeout:6];
 (
   node["amenity"~"clinic|dentist|doctors|veterinary|events_venue"](${bbox});
   node["office"~"accountant|lawyer|architect|consulting|estate_agent|financial"](${bbox});
@@ -27,12 +26,13 @@ export function buildHighTicketOverpassQuery(bbox: string = DEFAULT_BBOX): strin
   node["leisure"~"resort|fitness_centre"](${bbox});
   node["shop"~"car_repair|motorcycle_repair|optician|interior_decorator"](${bbox});
 );
-out body 350;`;
+out body 250;`;
 }
 
-async function fetchOverpassEndpoint(endpoint: string, body: string, timeoutMs: number = 4500): Promise<any> {
+// Fast sub-2.5-second fetch with AbortController
+async function fetchSingleEndpoint(endpoint: string, body: string, timeoutMs: number = 2500): Promise<any> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const res = await fetch(endpoint, {
@@ -45,15 +45,18 @@ async function fetchOverpassEndpoint(endpoint: string, body: string, timeoutMs: 
       signal: controller.signal,
       cache: 'no-store'
     });
-    clearTimeout(timeoutId);
+    clearTimeout(timer);
 
     if (res.ok) {
-      return await res.json();
+      const data = await res.json();
+      if (data && data.elements && data.elements.length > 0) {
+        return data;
+      }
     }
     throw new Error(`HTTP ${res.status}`);
-  } catch (err) {
-    clearTimeout(timeoutId);
-    throw err;
+  } catch (e) {
+    clearTimeout(timer);
+    throw e;
   }
 }
 
@@ -61,30 +64,24 @@ export async function fetchLeadsFromOverpass(bbox: string = DEFAULT_BBOX): Promi
   const query = buildHighTicketOverpassQuery(bbox);
   const body = `data=${encodeURIComponent(query)}`;
 
-  let responseData: any = null;
-  for (const endpoint of OVERPASS_ENDPOINTS) {
-    try {
-      responseData = await fetchOverpassEndpoint(endpoint, body, 4500);
-      if (responseData && responseData.elements && responseData.elements.length > 0) {
-        break;
+  try {
+    // Race all endpoints simultaneously with 2.5s hard limit
+    const responseData = await Promise.any(
+      OVERPASS_ENDPOINTS.map(ep => fetchSingleEndpoint(ep, body, 2500))
+    );
+
+    if (responseData && responseData.elements && responseData.elements.length > 0) {
+      const rawElements: RawOSMElement[] = responseData.elements;
+      const processed = processAndSortRawElements(rawElements);
+      if (processed.length > 0) {
+        return processed.slice(0, 30);
       }
-    } catch (e) {
-      continue;
     }
+  } catch (e) {
+    // If all endpoints fail or time out (>2.5s), return fallback immediately
   }
 
-  if (!responseData || !responseData.elements || responseData.elements.length === 0) {
-    return FALLBACK_HIGH_TICKET_LEADS;
-  }
-
-  const rawElements: RawOSMElement[] = responseData.elements || [];
-  const processedLeads = processAndSortRawElements(rawElements);
-
-  if (processedLeads.length === 0) {
-    return FALLBACK_HIGH_TICKET_LEADS;
-  }
-
-  return processedLeads.slice(0, 30);
+  return FALLBACK_HIGH_TICKET_LEADS;
 }
 
 export function getStoredLeads(): DailyLeadsResponse | null {
