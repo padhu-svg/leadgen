@@ -17,42 +17,19 @@ import {
   Wrench,
   Building2,
   Stethoscope,
-  Coffee,
-  ShoppingBag,
+  Star,
+  ShieldCheck,
+  Briefcase,
+  Hotel,
   Car,
-  Dumbbell,
-  Utensils
+  Dumbbell
 } from 'lucide-react';
-
-interface Lead {
-  id: string;
-  osmId: number;
-  businessName: string;
-  category: string;
-  location: string;
-  phone: string;
-  signal: string;
-  osmUrl: string;
-  gmapsUrl: string;
-  gmapsPinUrl?: string;
-  problemDescription: string;
-  pitch: string;
-  lat?: number;
-  lon?: number;
-}
-
-interface LeadsPayload {
-  date: string;
-  timestamp: string;
-  lastRefreshed: string;
-  count: number;
-  leads: Lead[];
-  error?: string | null;
-}
+import { EnrichedLead, DailyLeadsResponse } from '@/lib/types';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'opportunities' | 'auditor' | 'customizer'>('opportunities');
-  const [payload, setPayload] = useState<LeadsPayload | null>(null);
+  const [domainFilter, setDomainFilter] = useState<string>('All');
+  const [payload, setPayload] = useState<DailyLeadsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -114,9 +91,15 @@ export default function Home() {
     }
   };
 
+  const filteredLeads = payload && payload.leads 
+    ? (domainFilter === 'All' 
+        ? payload.leads 
+        : payload.leads.filter(l => l.targetDomainGroup === domainFilter))
+    : [];
+
   const exportCSV = () => {
     if (!payload || !payload.leads || payload.leads.length === 0) return;
-    const headers = ["Business Name", "Category", "Location", "Phone Number", "Signal", "Google Maps Centered URL", "Google Maps Pin URL", "OSM Map Listing", "Problem Description", "Devify Pitch"];
+    const headers = ["Business Name", "Quality Score", "Category", "Target Domain", "Location", "Phone Number", "Email", "Est. Budget", "Signal", "Google Maps Centered URL", "Google Maps Pin URL", "OSM Listing", "Problem Description", "Devify Pitch"];
     const lines = [headers.join(",")];
     
     payload.leads.forEach(l => {
@@ -129,9 +112,13 @@ export default function Home() {
 
       const row = [
         `"${(l.businessName || '').replace(/"/g, '""')}"`,
-        `"${(l.category || '').replace(/"/g, '""')}"`,
+        `"${l.qualityScore || 85}"`,
+        `"${(l.categoryDisplay || '').replace(/"/g, '""')}"`,
+        `"${(l.targetDomainGroup || '').replace(/"/g, '""')}"`,
         `"${(l.location || '').replace(/"/g, '""')}"`,
         `"${(l.phone || '').replace(/"/g, '""')}"`,
+        `"${(l.email || '').replace(/"/g, '""')}"`,
+        `"${(l.estimatedBudget || '').replace(/"/g, '""')}"`,
         `"${(l.signal || '').replace(/"/g, '""')}"`,
         `"${mapsSearch.replace(/"/g, '""')}"`,
         `"${mapsPin.replace(/"/g, '""')}"`,
@@ -146,22 +133,18 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `Devify_PreciseMaps_Leads_${payload.date || 'today'}.csv`);
+    link.setAttribute("download", `Devify_HighTicket_Leads_${payload.date || 'today'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const getCategoryIcon = (category: string) => {
-    const cat = category.toLowerCase();
-    if (cat.includes('caf') || cat.includes('coffee')) return <Coffee className="w-3.5 h-3.5" />;
-    if (cat.includes('restaurant') || cat.includes('eatery')) return <Utensils className="w-3.5 h-3.5" />;
-    if (cat.includes('salon') || cat.includes('hair')) return <ShoppingBag className="w-3.5 h-3.5" />;
-    if (cat.includes('real estate')) return <Building2 className="w-3.5 h-3.5" />;
-    if (cat.includes('clinic') || cat.includes('medical') || cat.includes('dental')) return <Stethoscope className="w-3.5 h-3.5" />;
-    if (cat.includes('car') || cat.includes('auto')) return <Car className="w-3.5 h-3.5" />;
-    if (cat.includes('gym') || cat.includes('fitness')) return <Dumbbell className="w-3.5 h-3.5" />;
-    return <Globe className="w-3.5 h-3.5" />;
+  const getDomainIcon = (group: string) => {
+    if (group === 'Healthcare & Wellness') return <Stethoscope className="w-3.5 h-3.5 text-emerald-400" />;
+    if (group === 'B2B & Professional') return <Briefcase className="w-3.5 h-3.5 text-teal-400" />;
+    if (group === 'Hospitality & Venues') return <Hotel className="w-3.5 h-3.5 text-indigo-400" />;
+    if (group === 'High-Ticket Local Services') return <Car className="w-3.5 h-3.5 text-amber-400" />;
+    return <Building2 className="w-3.5 h-3.5 text-emerald-400" />;
   };
 
   return (
@@ -176,7 +159,7 @@ export default function Home() {
             </div>
             <div>
               <span className="font-bold text-lg text-white tracking-tight">DEVIFY LABS</span>
-              <span className="text-xs text-emerald-400 font-mono ml-2 px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800">Client Acquisition Portal</span>
+              <span className="text-xs text-emerald-400 font-mono ml-2 px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800">High-Ticket Client Acquisition</span>
             </div>
           </div>
 
@@ -187,7 +170,7 @@ export default function Home() {
                 className="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-800 text-xs px-3.5 py-2 rounded-lg font-mono font-bold transition flex items-center gap-1.5 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
-                Export CSV ({payload.leads.length} Leads)
+                Export CSV ({payload.leads.length} High-Ticket Leads)
               </button>
             )}
           </div>
@@ -242,8 +225,11 @@ export default function Home() {
             {/* HERO BAR */}
             <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
-                <h1 className="text-xl font-extrabold text-white tracking-tight">Uniquely Named Local Businesses (No Website Found)</h1>
-                <p className="text-slate-400 text-xs mt-1">Queried live from OpenStreetMap Overpass API. Every lead opens Google Maps centered directly on the exact place location.</p>
+                <h1 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+                  <span>High-Ticket Commercial Businesses (No Website Found)</span>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Quality Scored (0-100)</span>
+                </h1>
+                <p className="text-slate-400 text-xs mt-1">Targeting high-budget Healthcare, B2B Law/Architecture, Hotels, & Auto Garages. Micro-retailers excluded.</p>
               </div>
 
               <div className="flex items-center gap-3 shrink-0">
@@ -261,6 +247,24 @@ export default function Home() {
                   {refreshing ? 'Refreshing...' : 'Refresh 30 Leads'}
                 </button>
               </div>
+            </div>
+
+            {/* DOMAIN GROUP FILTERS */}
+            <div className="flex flex-wrap gap-2 text-xs font-bold font-mono">
+              {['All', 'Healthcare & Wellness', 'B2B & Professional', 'Hospitality & Venues', 'High-Ticket Local Services'].map((group) => (
+                <button
+                  key={group}
+                  onClick={() => setDomainFilter(group)}
+                  className={`px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 ${
+                    domainFilter === group
+                      ? 'bg-emerald-500 text-slate-950 font-bold'
+                      : 'bg-slate-900 text-slate-300 border border-slate-800 hover:border-emerald-500/50'
+                  }`}
+                >
+                  {getDomainIcon(group)}
+                  <span>{group}</span>
+                </button>
+              ))}
             </div>
 
             {/* ERROR BANNER */}
@@ -289,58 +293,61 @@ export default function Home() {
             )}
 
             {/* EMPTY STATE */}
-            {!loading && (!payload || !payload.leads || payload.leads.length === 0) && (
+            {!loading && filteredLeads.length === 0 && (
               <div className="p-12 text-center rounded-2xl bg-slate-900 border border-slate-800 space-y-4 max-w-xl mx-auto my-12">
                 <FileQuestion className="w-12 h-12 text-amber-400 mx-auto opacity-80" />
-                <h3 className="text-lg font-bold text-white">Couldn't fetch live leads</h3>
+                <h3 className="text-lg font-bold text-white">No leads match this domain filter</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Overpass API is currently experiencing rate limits or timeouts. Please click the refresh button below to re-query live local business listings.
+                  Select "All" or click "Refresh 30 Leads" to query fresh high-ticket listings from OpenStreetMap.
                 </p>
                 <button
-                  onClick={() => fetchLeads(true)}
+                  onClick={() => setDomainFilter('All')}
                   className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-6 py-2.5 rounded-xl transition font-mono cursor-pointer"
                 >
-                  Try Refreshing Now
+                  Show All High-Ticket Leads
                 </button>
               </div>
             )}
 
             {/* LEADS CARDS GRID */}
-            {!loading && payload && payload.leads && payload.leads.length > 0 && (
+            {!loading && filteredLeads.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {payload.leads.map((l) => {
+                {filteredLeads.map((l) => {
                   const nameEnc = encodeURIComponent(l.businessName);
                   const centeredGmapsUrl = l.lat && l.lon 
                     ? `https://www.google.com/maps/search/${nameEnc}/@${l.lat},${l.lon},17z` 
                     : (l.gmapsUrl || `https://www.google.com/maps/search/?api=1&query=${nameEnc}+${encodeURIComponent(l.location)}`);
                   
-                  const gmapsPinUrl = l.lat && l.lon ? `https://maps.google.com/?q=${l.lat},${l.lon}` : centeredGmapsUrl;
+                  const gmapsPinUrl = l.gmapsPinUrl || (l.lat && l.lon ? `https://maps.google.com/?q=${l.lat},${l.lon}` : centeredGmapsUrl);
 
                   return (
                     <div key={l.id} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition space-y-4 flex flex-col justify-between relative overflow-hidden">
                       <div className="space-y-3">
                         
-                        {/* CATEGORY & LOCATION HEADER */}
+                        {/* CATEGORY & QUALITY SCORE HEADER */}
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800 flex items-center gap-1.5">
-                            {getCategoryIcon(l.category)}
-                            {l.category}
+                          <span className="font-mono text-emerald-400 px-2.5 py-0.5 rounded bg-emerald-950 border border-emerald-800 flex items-center gap-1.5 font-bold">
+                            {getDomainIcon(l.targetDomainGroup)}
+                            {l.categoryDisplay || l.targetDomainGroup}
                           </span>
-                          <span className="text-slate-400 font-mono flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-slate-500" /> {l.location}
+                          <span className="text-xs font-mono font-extrabold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800 flex items-center gap-1">
+                            <Star className="w-3 h-3 text-amber-400 fill-amber-400" /> {l.qualityScore || 85}/100
                           </span>
                         </div>
 
                         {/* BUSINESS NAME */}
-                        <h3 className="text-lg font-bold text-white tracking-tight leading-snug">{l.businessName}</h3>
+                        <div>
+                          <h3 className="text-lg font-bold text-white tracking-tight leading-snug">{l.businessName}</h3>
+                          <p className="text-xs text-slate-400 font-mono flex items-center gap-1 mt-1">
+                            <MapPin className="w-3 h-3 text-slate-500" /> {l.location}
+                          </p>
+                        </div>
 
-                        {/* SIGNAL & ACCURATE GOOGLE MAPS NAVIGATION LINKS */}
-                        <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2 text-xs font-mono">
+                        {/* SIGNAL & BUDGET DETAIL */}
+                        <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2 text-xs font-mono">
                           <div className="text-rose-400 font-bold flex items-center justify-between">
                             <span>🚨 Signal: {l.signal}</span>
-                            <a href={l.osmUrl} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:underline flex items-center gap-1">
-                              OSM <ExternalLink className="w-3 h-3" />
-                            </a>
+                            <span className="text-emerald-400 font-bold font-mono">{l.estimatedBudget || '₹50,000+'}</span>
                           </div>
 
                           <div className="flex flex-col gap-1.5 pt-1.5 border-t border-slate-900">
@@ -477,7 +484,7 @@ Do you have any upcoming builds where an extra dev team could help ease bandwidt
 
       {/* FOOTER */}
       <footer className="border-t border-slate-800/80 bg-slate-950 py-4 text-center text-xs text-slate-500 font-mono">
-        Devify Labs Client Acquisition Portal • Powered by OpenStreetMap & Google Maps • {new Date().getFullYear()}
+        Devify Labs High-Ticket Client Acquisition Portal • Powered by OpenStreetMap & Quality Scoring Pipeline • {new Date().getFullYear()}
       </footer>
 
     </div>
