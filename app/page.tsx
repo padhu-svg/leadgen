@@ -378,7 +378,7 @@ export default function Home() {
         {/* TAB 2: WEBSITE AUDITOR & PITCHER */}
         {activeTab === 'auditor' && (
           <div className="space-y-6">
-            <div class="p-8 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
               <h2 className="text-xl font-bold text-white">Target Website Technical Auditor</h2>
               <p className="text-xs text-slate-400">Analyze any existing business website URL to scan load latency, viewport configuration, and security headers.</p>
               
