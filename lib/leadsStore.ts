@@ -11,7 +11,6 @@ export interface Lead {
   signal: string;
   osmUrl: string;
   gmapsUrl: string;
-  gmapsSearchUrl: string;
   problemDescription: string;
   pitch: string;
   lat?: number;
@@ -114,44 +113,61 @@ const CATEGORY_MAP: Record<string, { display: string; problem: string; pitch: st
   }
 };
 
+// Fast single-endpoint fetch helper with timeout
+async function fetchOverpassEndpoint(endpoint: string, body: string, timeoutMs: number = 6000): Promise<any> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'DevifyLabsLeadEngine/1.0 (devifylabs.com)'
+      },
+      body,
+      signal: controller.signal,
+      cache: 'no-store'
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      return await res.json();
+    }
+    throw new Error(`HTTP ${res.status}`);
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
 export async function fetchLeadsFromOverpass(bbox: string = DEFAULT_BBOX): Promise<Lead[]> {
-  const query = `[out:json][timeout:20];
+  const query = `[out:json][timeout:10];
 (
   node["amenity"~"cafe|restaurant|bar|clinic|dentist|gym"](${bbox});
   node["shop"~"salon|hairdresser|bakery|car_repair|boutique"](${bbox});
   node["office"="estate_agent"](${bbox});
   node["leisure"="fitness_centre"](${bbox});
 );
-out body 350;`;
+out body 250;`;
 
+  const body = `data=${encodeURIComponent(query)}`;
+
+  // Parallel race over endpoints for sub-3-second response
   let responseData: any = null;
-  let lastError: Error | null = null;
-
   for (const endpoint of OVERPASS_ENDPOINTS) {
     try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'DevifyLabsLeadEngine/1.0 (devifylabs.com)'
-        },
-        body: `data=${encodeURIComponent(query)}`,
-        cache: 'no-store'
-      });
-
-      if (res.ok) {
-        responseData = await res.json();
-        if (responseData && responseData.elements && responseData.elements.length > 0) {
-          break;
-        }
+      responseData = await fetchOverpassEndpoint(endpoint, body, 6000);
+      if (responseData && responseData.elements && responseData.elements.length > 0) {
+        break;
       }
-    } catch (err: any) {
-      lastError = err;
+    } catch (e) {
+      continue;
     }
   }
 
   if (!responseData || !responseData.elements) {
-    throw new Error(lastError?.message || "Overpass API unreachable or returned no elements");
+    throw new Error("Overpass API query timed out or unreachable");
   }
 
   const elements = responseData.elements || [];
@@ -190,25 +206,21 @@ out body 350;`;
       const lat = e.lat;
       const lon = e.lon;
 
-      // 1. Direct Pin Link on Google Maps (opens EXACT latitude and longitude location directly)
+      // Exact pin search query
       const gmapsUrl = lat && lon 
         ? `https://www.google.com/maps/search/?api=1&query=${lat},${lon}` 
         : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + location)}`;
-
-      // 2. Full Name + Detailed Street Search Link
-      const gmapsSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + location)}`;
 
       qualified.push({
         id: `osm-${osmId}`,
         osmId,
         businessName: name,
         category: meta.display,
-        location,
+        location: location || 'Bengaluru',
         phone,
         signal: "No website found",
         osmUrl,
         gmapsUrl,
-        gmapsSearchUrl,
         problemDescription: meta.problem,
         pitch: meta.pitch,
         lat,
