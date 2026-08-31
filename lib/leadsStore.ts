@@ -1,0 +1,222 @@
+import fs from 'fs';
+import path from 'path';
+
+export interface Lead {
+  id: string;
+  osmId: number;
+  businessName: string;
+  category: string;
+  location: string;
+  phone: string;
+  signal: string;
+  osmUrl: string;
+  problemDescription: string;
+  pitch: string;
+  lat?: number;
+  lon?: number;
+}
+
+export interface DailyLeadsResponse {
+  date: string;
+  timestamp: string;
+  count: number;
+  lastRefreshed: string;
+  leads: Lead[];
+  error?: string | null;
+}
+
+const CACHE_FILE = path.join(process.cwd(), 'leads_cache.json');
+const DEFAULT_BBOX = process.env.TARGET_CITY_BBOX || "12.88,77.50,13.10,77.72"; // Bangalore Bounding Box
+
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.nchc.org.tw/api/interpreter"
+];
+
+// Category metadata & copy generator
+const CATEGORY_MAP: Record<string, { display: string; problem: string; pitch: string }> = {
+  cafe: {
+    display: "Café & Coffee Shop",
+    problem: "Relies entirely on walk-ins and Swiggy/Zomato — no direct way for new customers to view digital menus or order directly.",
+    pitch: "A lightweight digital menu & WhatsApp order web app would let them capture direct pickup orders without paying 20% third-party commissions."
+  },
+  restaurant: {
+    display: "Restaurant & Eatery",
+    problem: "Lacks a direct mobile site for table reservations or digital menu browsing outside walk-in hours.",
+    pitch: "A fast online reservation & QR digital menu web app would turn Google search traffic into direct weekend table bookings."
+  },
+  bar: {
+    display: "Bar & Pub",
+    problem: "No web presence to showcase weekend event schedules, drink menus, or VIP table reservations.",
+    pitch: "An event schedule & table reservation web portal would capture party bookings and increase weekend guest turnout."
+  },
+  salon: {
+    display: "Salon & Hairdresser",
+    problem: "Customers must call or visit in person to inquire about service prices and appointments — zero online booking path.",
+    pitch: "An automated WhatsApp appointment booking assistant & service menu site would let clients schedule appointments 24/7."
+  },
+  hairdresser: {
+    display: "Salon & Barber Shop",
+    problem: "No digital booking menu; peak weekend appointment requests get lost in unreturned phone calls.",
+    pitch: "A 1-click slot booking web app with automated SMS/WhatsApp reminders would eliminate scheduling chaos."
+  },
+  estate_agent: {
+    display: "Real Estate Agency",
+    problem: "Property buyers have no way to browse current property listings or request site visits online.",
+    pitch: "A high-converting property portfolio web app with 1-click WhatsApp lead capture would capture high-ticket HNI buyers."
+  },
+  clinic: {
+    display: "Medical Clinic",
+    problem: "Patients cannot view doctor schedules or book consultations online, leading to high phone queue friction.",
+    pitch: "A doctor schedule site & automated WhatsApp appointment booking assistant would streamline patient check-ins."
+  },
+  dentist: {
+    display: "Dental Practice",
+    problem: "No online booking portal for dental checkups; missing out on high-intent local search patients.",
+    pitch: "A clean dental booking portal with automated appointment reminders would increase new patient intakes."
+  },
+  car_repair: {
+    display: "Auto Repair & Garage",
+    problem: "Vehicle owners cannot get instant service cost estimates or book repair slots digitally.",
+    pitch: "An interactive service estimate calculator & booking web app would streamline daily workshop check-ins."
+  },
+  bakery: {
+    display: "Bakery & Confectionery",
+    problem: "Custom cake and order requests are handled manually via phone calls, causing order errors.",
+    pitch: "A digital cake catalog & order customization web app with instant UPI payments would automate daily pre-orders."
+  },
+  boutique: {
+    display: "Boutique & Retail Store",
+    problem: "Inventory and new arrivals are only shared via Instagram DMs, creating sales bottlenecks.",
+    pitch: "A digital product showcase catalog with instant WhatsApp order buttons would boost direct retail sales."
+  },
+  gym: {
+    display: "Gym & Fitness Centre",
+    problem: "No web portal for trial class signups, workout schedules, or membership pass purchases.",
+    pitch: "A trial class booking web app with instant UPI pass payments would convert social media traffic into paid members."
+  },
+  fitness_centre: {
+    display: "Fitness & Wellness Studio",
+    problem: "Missing a central schedule portal for class passes and personal trainer bookings.",
+    pitch: "A modern class schedule & trainer reservation web app would boost monthly membership renewals."
+  }
+};
+
+export async function fetchLeadsFromOverpass(bbox: string = DEFAULT_BBOX): Promise<Lead[]> {
+  const query = `[out:json][timeout:20];
+(
+  node["amenity"~"cafe|restaurant|bar|clinic|dentist|gym"](${bbox});
+  node["shop"~"salon|hairdresser|bakery|car_repair|boutique"](${bbox});
+  node["office"="estate_agent"](${bbox});
+  node["leisure"="fitness_centre"](${bbox});
+);
+out body 350;`;
+
+  let responseData: any = null;
+  let lastError: Error | null = null;
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'DevifyLabsLeadEngine/1.0 (devifylabs.com)'
+        },
+        body: `data=${encodeURIComponent(query)}`,
+        cache: 'no-store'
+      });
+
+      if (res.ok) {
+        responseData = await res.json();
+        if (responseData && responseData.elements && responseData.elements.length > 0) {
+          break;
+        }
+      }
+    } catch (err: any) {
+      lastError = err;
+    }
+  }
+
+  if (!responseData || !responseData.elements) {
+    throw new Error(lastError?.message || "Overpass API unreachable or returned no elements");
+  }
+
+  const elements = responseData.elements || [];
+  const qualified: Lead[] = [];
+
+  for (const e of elements) {
+    const tags = e.tags || {};
+    const name = tags.name;
+    const hasWebsite = Boolean(tags.website || tags['contact:website']);
+
+    if (name && !hasWebsite) {
+      const rawCategoryKey = (tags.amenity || tags.shop || tags.office || tags.leisure || 'local_business').toLowerCase();
+      const meta = CATEGORY_MAP[rawCategoryKey] || {
+        display: rawCategoryKey.replace('_', ' ').toUpperCase(),
+        problem: "Has no official website or digital portal for local customer inquiries.",
+        pitch: "A fast, modern responsive website with 1-click WhatsApp lead capture would capture new customers."
+      };
+
+      const phone = tags.phone || tags['contact:phone'] || 'N/A';
+      const location = tags['addr:suburb'] || tags['addr:district'] || tags['addr:street'] || 'Bengaluru';
+      const osmId = e.id;
+      const osmUrl = `https://www.openstreetmap.org/node/${osmId}`;
+
+      qualified.push({
+        id: `osm-${osmId}`,
+        osmId,
+        businessName: name,
+        category: meta.display,
+        location,
+        phone,
+        signal: "No website found",
+        osmUrl,
+        problemDescription: meta.problem,
+        pitch: meta.pitch,
+        lat: e.lat,
+        lon: e.lon
+      });
+    }
+  }
+
+  // Shuffle / rotate leads to ensure category mix and picking 30
+  const shuffled = qualified.sort(() => 0.5 - Math.random());
+  
+  // Pick top 30 unique business names
+  const uniqueLeads: Lead[] = [];
+  const seenNames = new Set<string>();
+
+  for (const lead of shuffled) {
+    const cleanName = lead.businessName.trim().toLowerCase();
+    if (!seenNames.has(cleanName)) {
+      seenNames.add(cleanName);
+      uniqueLeads.push(lead);
+    }
+    if (uniqueLeads.length >= 30) break;
+  }
+
+  if (uniqueLeads.length === 0) {
+    throw new Error("Overpass API returned no qualifying businesses with missing websites");
+  }
+
+  return uniqueLeads;
+}
+
+// CACHE DISK / MEMORY STORE MANAGEMENT
+export function getStoredLeads(): DailyLeadsResponse | null {
+  try {
+    if (fs.existsSync(CACHE_FILE)) {
+      const data = fs.readFileSync(CACHE_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (e) {}
+  return null;
+}
+
+export function saveStoredLeads(leadsResponse: DailyLeadsResponse): void {
+  try {
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(leadsResponse, null, 2), 'utf8');
+  } catch (e) {}
+}

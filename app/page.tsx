@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Globe, 
-  Search, 
   Sparkles, 
   Check, 
   Copy, 
@@ -13,163 +12,122 @@ import {
   Download, 
   RefreshCw,
   ExternalLink,
-  MessageSquare,
+  AlertTriangle,
+  FileQuestion,
+  Wrench,
   Building2,
   Stethoscope,
   Coffee,
-  Hotel,
-  Dumbbell
+  ShoppingBag,
+  Car,
+  Dumbbell,
+  Layers,
+  Utensils
 } from 'lucide-react';
 
-const INITIAL_BANGALORE_LEADS = [
-  {
-    id: "inst-1",
-    businessName: "Third Wave Coffee (Indiranagar)",
-    category: "Cafes & Restaurants",
-    location: "100 Feet Rd, Indiranagar, Bengaluru",
-    contactPhone: "080 4965 2100",
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Third%20Wave%20Coffee%20Indiranagar%20Bengaluru",
-    priceTag: "₹35,000 - ₹65,000",
-    currentStatus: "Missing Direct QR Code Menu & Table Ordering Web App",
-    whatTheyNeed: "QR Code Digital Menu + Table Ordering & UPI Payment Web App",
-    whyDevifyHelps: "Saves 15%-25% commission paid to Swiggy/Zomato on direct dine-in & pickup orders.",
-    whatsappPitch: "Hi! Loved visiting Third Wave Coffee in Indiranagar. Noticed you're relying only on paper menus or Swiggy. Devify Labs builds custom QR Menu & Table Ordering Web Apps for Bangalore cafes in 4 days. Can I send a 30-sec video demo?"
-  },
-  {
-    id: "inst-2",
-    businessName: "Glen's Bakehouse",
-    category: "Cafes & Restaurants",
-    location: "Indiranagar 2nd Stage, Bengaluru",
-    contactPhone: "080 4122 8773",
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Glens%20Bakehouse%20Indiranagar%20Bengaluru",
-    priceTag: "₹35,000 - ₹60,000",
-    currentStatus: "High Dine-In Queue / Missing Online Pre-Ordering Web App",
-    whatTheyNeed: "Pre-Ordering & QR Bakery Menu Web Application",
-    whyDevifyHelps: "Reduces weekend counter wait times and captures direct takeaway orders.",
-    whatsappPitch: "Hi Team! Glen's Bakehouse in Indiranagar is always buzzing. We build custom pre-ordering & QR menu web apps for Bangalore bakeries so customers can order directly online. Open to seeing a quick concept?"
-  },
-  {
-    id: "inst-3",
-    businessName: "Prestige Estates Projects",
-    category: "Real Estate & Builders",
-    location: "Koramangala, Bengaluru",
-    contactPhone: "080 2559 1080",
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Prestige%20Estates%20Projects%20Koramangala%20Bengaluru",
-    priceTag: "₹65,000 - ₹1,80,000",
-    currentStatus: "Outdated Mobile Layout / Missing Property Showcase Web App",
-    whatTheyNeed: "Luxury Real Estate Web Application (Interactive Floor Plans & WhatsApp Lead Widget)",
-    whyDevifyHelps: "Captures high-ticket HNI villa & apartment buyers with 1-click WhatsApp inquiry buttons.",
-    whatsappPitch: "Hello! Saw your luxury property listings in Koramangala. Your current mobile site delay is costing you high-ticket HNI leads. At Devify Labs, we build modern real estate web apps with 1-click WhatsApp lead capture. Open to seeing a free homepage concept?"
-  },
-  {
-    id: "inst-4",
-    businessName: "Clove Dental Clinic",
-    category: "Clinics & Healthcare",
-    location: "HSR Layout Sector 1, Bengaluru",
-    contactPhone: "1800 120 0033",
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Clove%20Dental%20Clinic%20HSR%20Layout%20Bengaluru",
-    priceTag: "₹45,000 - ₹95,000",
-    currentStatus: "Missing Online Appointment Booking & Schedule System",
-    whatTheyNeed: "Doctor Appointment Booking Website & Patient Schedule Portal",
-    whyDevifyHelps: "Captures local patients searching on Google Maps; automates appointment reminders via WhatsApp.",
-    whatsappPitch: "Hi Doctor! Saw your clinic listing in HSR Layout on Google Maps, but noticed you don't have an online appointment booking website yet. Devify Labs builds doctor appointment web portals in 5 days. Can I send a quick preview?"
-  },
-  {
-    id: "inst-5",
-    businessName: "Kosmoderma Skin & Hair Clinic",
-    category: "Clinics & Healthcare",
-    location: "Indiranagar 100 Feet Rd, Bengaluru",
-    contactPhone: "076767 55555",
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Kosmoderma%20Skin%20Clinic%20Indiranagar%20Bengaluru",
-    priceTag: "₹50,000 - ₹1,10,000",
-    currentStatus: "Missing Skincare Consultation Booking & Product Store Web App",
-    whatTheyNeed: "Cosmetic Dermatology Booking & E-Commerce Web App",
-    whyDevifyHelps: "Allows clients to book treatments and purchase recommended skincare products directly.",
-    whatsappPitch: "Hi Kosmoderma Team! Love your dermatology work in Indiranagar. Devify Labs builds skincare treatment booking & e-commerce web apps for Bangalore skin clinics. Can I send over 2 case study concepts?"
-  },
-  {
-    id: "inst-6",
-    businessName: "The Paul Bangalore Hotel",
-    category: "Hotels & Staycations",
-    location: "Domlur, Near Indiranagar, Bengaluru",
-    contactPhone: "080 4047 7777",
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=The%20Paul%20Bangalore%20Hotel%20Domlur%20Bengaluru",
-    priceTag: "₹60,000 - ₹1,50,000",
-    currentStatus: "Slow Mobile Photo Gallery / Missing Direct Booking Engine",
-    whatTheyNeed: "Resort Website + Direct Booking & UPI Advance Payment Web App",
-    whyDevifyHelps: "Enables guests to book directly, bypassing 20% commission paid to MakeMyTrip/Agoda.",
-    whatsappPitch: "Hi Team! The Paul Bangalore looks stunning, but your mobile site is missing a direct booking engine, forcing guests to pay extra on OTAs. Devify Labs builds direct-booking resort websites with instant UPI advance payment. Open to a 2-min demo?"
-  },
-  {
-    id: "inst-7",
-    businessName: "Cult Fit Gym & Fitness Studio",
-    category: "Gyms & Fitness Studios",
-    location: "HSR Layout Sector 3, Bengaluru",
-    contactPhone: "080 6848 8888",
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Cult%20Fit%20Gym%20HSR%20Layout%20Bengaluru",
-    priceTag: "₹30,000 - ₹60,000",
-    currentStatus: "Only Instagram Profile / Missing Class Booking Web App",
-    whatTheyNeed: "Fitness Studio Website + Class Trial Booking Web App",
-    whyDevifyHelps: "Converts Instagram followers into paid gym members via bio trial booking links.",
-    whatsappPitch: "Hey Team! Loved your workout videos in HSR Layout. Noticed your bio link only goes to a raw WhatsApp number instead of a proper class booking page. Devify Labs builds class trial booking web apps for Bangalore gyms in 3 days. Can I send a quick preview?"
-  }
-];
+interface Lead {
+  id: string;
+  osmId: number;
+  businessName: string;
+  category: string;
+  location: string;
+  phone: string;
+  signal: string;
+  osmUrl: string;
+  problemDescription: string;
+  pitch: string;
+  lat?: number;
+  lon?: number;
+}
+
+interface LeadsPayload {
+  date: string;
+  timestamp: string;
+  lastRefreshed: string;
+  count: number;
+  leads: Lead[];
+  error?: string | null;
+}
 
 export default function Home() {
-  const [leads, setLeads] = useState(INITIAL_BANGALORE_LEADS);
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [scrapeCategory, setScrapeCategory] = useState('Cafes & Restaurants');
-  const [scrapeLocation, setScrapeLocation] = useState('Indiranagar Bengaluru');
-  const [scraping, setScraping] = useState(false);
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'opportunities' | 'auditor' | 'customizer'>('opportunities');
+  const [payload, setPayload] = useState<LeadsPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const filteredLeads = activeCategory === 'All' 
-    ? leads 
-    : leads.filter(l => l.category === activeCategory);
+  // Auditor State
+  const [auditUrl, setAuditUrl] = useState('');
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditResult, setAuditResult] = useState<any>(null);
 
-  const copyPitch = (text: string, idx: number) => {
-    navigator.clipboard.writeText(text);
-    setCopiedIndex(idx);
-    setTimeout(() => setCopiedIndex(null), 2000);
+  const fetchLeads = async (forceRefresh = false) => {
+    if (forceRefresh) setRefreshing(true);
+    else setLoading(true);
+
+    try {
+      const method = forceRefresh ? 'POST' : 'GET';
+      const res = await fetch('/api/leads', { method, cache: 'no-store' });
+      const data = await res.json();
+      setPayload(data);
+    } catch (err: any) {
+      setPayload({
+        date: new Date().toISOString().split('T')[0],
+        timestamp: new Date().toISOString(),
+        lastRefreshed: 'Unavailable',
+        count: 0,
+        leads: [],
+        error: "Couldn't fetch live leads — Overpass API unavailable, try refreshing."
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const handleScrape = async () => {
-    setScraping(true);
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  const copyPitch = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const runAudit = async () => {
+    if (!auditUrl.trim()) return;
+    setAuditLoading(true);
     try {
-      const res = await fetch('/api/leads', {
+      const res = await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          query: `${scrapeCategory} ${scrapeLocation}`,
-          category: scrapeCategory 
-        })
+        body: JSON.stringify({ url: auditUrl })
       });
       const data = await res.json();
-      if (data.places && data.places.length > 0) {
-        setLeads(data.places);
-      }
+      setAuditResult(data);
     } catch (e) {
+      setAuditResult({ error: "Failed to audit website connection." });
     } finally {
-      setScraping(false);
+      setAuditLoading(false);
     }
   };
 
   const exportCSV = () => {
-    const headers = ["Business Name", "Category", "Location", "Phone Number", "Google Maps URL", "Price Tag", "Current Issue", "What Devify Builds", "Why They Buy", "WhatsApp Pitch"];
+    if (!payload || !payload.leads || payload.leads.length === 0) return;
+    const headers = ["Business Name", "Category", "Location", "Phone Number", "Signal", "OSM Map Listing", "Problem Description", "Devify Pitch"];
     const lines = [headers.join(",")];
     
-    leads.forEach(l => {
+    payload.leads.forEach(l => {
       const row = [
         `"${(l.businessName || '').replace(/"/g, '""')}"`,
         `"${(l.category || '').replace(/"/g, '""')}"`,
         `"${(l.location || '').replace(/"/g, '""')}"`,
-        `"${(l.contactPhone || '').replace(/"/g, '""')}"`,
-        `"${(l.mapsUrl || '').replace(/"/g, '""')}"`,
-        `"${(l.priceTag || '').replace(/"/g, '""')}"`,
-        `"${(l.currentStatus || '').replace(/"/g, '""')}"`,
-        `"${(l.whatTheyNeed || '').replace(/"/g, '""')}"`,
-        `"${(l.whyDevifyHelps || '').replace(/"/g, '""')}"`,
-        `"${(l.whatsappPitch || '').replace(/"/g, '""')}"`
+        `"${(l.phone || '').replace(/"/g, '""')}"`,
+        `"${(l.signal || '').replace(/"/g, '""')}"`,
+        `"${(l.osmUrl || '').replace(/"/g, '""')}"`,
+        `"${(l.problemDescription || '').replace(/"/g, '""')}"`,
+        `"${(l.pitch || '').replace(/"/g, '""')}"`
       ];
       lines.push(row.join(","));
     });
@@ -178,10 +136,22 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", "Devify_Reachable_Leads_Database.csv");
+    link.setAttribute("download", `Devify_NoWebsite_Leads_${payload.date || 'today'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const getCategoryIcon = (category: string) => {
+    const cat = category.toLowerCase();
+    if (cat.includes('caf') || cat.includes('coffee')) return <Coffee className="w-3.5 h-3.5" />;
+    if (cat.includes('restaurant') || cat.includes('eatery')) return <Utensils className="w-3.5 h-3.5" />;
+    if (cat.includes('salon') || cat.includes('hair')) return <ShoppingBag className="w-3.5 h-3.5" />;
+    if (cat.includes('real estate')) return <Building2 className="w-3.5 h-3.5" />;
+    if (cat.includes('clinic') || cat.includes('medical') || cat.includes('dental')) return <Stethoscope className="w-3.5 h-3.5" />;
+    if (cat.includes('car') || cat.includes('auto')) return <Car className="w-3.5 h-3.5" />;
+    if (cat.includes('gym') || cat.includes('fitness')) return <Dumbbell className="w-3.5 h-3.5" />;
+    return <Globe className="w-3.5 h-3.5" />;
   };
 
   return (
@@ -192,195 +162,283 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center font-bold text-slate-950 shadow-lg shadow-emerald-500/20">
-              <Sparkles className="w-5 h-5 text-slate-950 font-bold" />
+              <Zap className="w-5 h-5 text-slate-950 font-bold" />
             </div>
             <div>
               <span className="font-bold text-lg text-white tracking-tight">DEVIFY LABS</span>
-              <span className="text-xs text-emerald-400 font-mono ml-2 px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800">Reachable Client Portal</span>
+              <span className="text-xs text-emerald-400 font-mono ml-2 px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800">Client Acquisition & Audit Portal</span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={exportCSV}
-              className="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-800 text-xs px-4 py-2 rounded-lg font-mono font-bold transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Export CSV (Excel)
-            </button>
+            {payload && payload.leads && payload.leads.length > 0 && (
+              <button
+                onClick={exportCSV}
+                className="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-800 text-xs px-3.5 py-2 rounded-lg font-mono font-bold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Export CSV ({payload.leads.length} Leads)
+              </button>
+            )}
           </div>
         </div>
       </header>
 
-      {/* MAIN CONTAINER */}
+      {/* NAVIGATION TABS */}
+      <div className="border-b border-slate-800 bg-slate-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-4 font-mono">
+          <button
+            onClick={() => setActiveTab('opportunities')}
+            className={`py-3.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 ${
+              activeTab === 'opportunities'
+                ? 'border-emerald-500 text-emerald-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>⚡ Live Client Opportunities ({loading ? '...' : (payload?.count || 0)})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('auditor')}
+            className={`py-3.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 ${
+              activeTab === 'auditor'
+                ? 'border-emerald-500 text-emerald-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>🌐 Website Auditor & Pitcher</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('customizer')}
+            className={`py-3.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 ${
+              activeTab === 'customizer'
+                ? 'border-emerald-500 text-emerald-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>📝 Pitch Customizer</span>
+          </button>
+        </div>
+      </div>
+
+      {/* MAIN CONTENT */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full space-y-6">
         
-        {/* HERO TITLE CARD */}
-        <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-extrabold text-white tracking-tight">Reachable Client Leads Database</h1>
-            <p className="text-slate-400 text-xs mt-1">Verified Bangalore businesses (Cafes, Real Estate, Clinics, Resorts, Gyms) with direct Google Maps phone numbers & WhatsApp outreach scripts.</p>
-          </div>
+        {/* TAB 1: LIVE CLIENT OPPORTUNITIES */}
+        {activeTab === 'opportunities' && (
+          <div className="space-y-6">
+            
+            {/* HERO BAR */}
+            <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <h1 className="text-xl font-extrabold text-white tracking-tight">Real Local Businesses (No Website Found)</h1>
+                <p className="text-slate-400 text-xs mt-1">Queried live from OpenStreetMap Overpass API. Filtered specifically for un-webbed local services, cafes, real estate, clinics, & garages.</p>
+              </div>
 
-          <span className="text-xs font-mono bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-1.5 rounded-lg shrink-0">
-            {leads.length} Verified Leads Ready
-          </span>
-        </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="text-right text-xs font-mono text-slate-400">
+                  <div>Last refreshed: <span className="text-emerald-400 font-bold">{payload?.lastRefreshed || 'Just now'}</span></div>
+                  <div className="text-[10px] text-slate-500">24-hour Daily Auto Rotation</div>
+                </div>
 
-        {/* LIVE GOOGLE MAPS SCRAPER CONTROL BAR */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-          <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">Scrape Google Maps Places Live in Real-Time</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs text-slate-400 font-mono block mb-1">Select Business Category:</label>
-              <select 
-                value={scrapeCategory}
-                onChange={(e) => setScrapeCategory(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
-              >
-                <option value="Cafes & Restaurants">☕ Cafes & Restaurants</option>
-                <option value="Clinics & Healthcare">🩺 Dental & Medical Clinics</option>
-                <option value="Real Estate & Builders">🏢 Real Estate Brokers & Builders</option>
-                <option value="Hotels & Staycations">🏨 Homestays & Boutique Resorts</option>
-                <option value="Gyms & Fitness Studios">🏋️ Gyms & CrossFit Studios</option>
-              </select>
+                <button
+                  onClick={() => fetchLeads(true)}
+                  disabled={refreshing}
+                  className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold text-xs px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 font-mono cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                  {refreshing ? 'Refreshing...' : 'Refresh 30 Leads'}
+                </button>
+              </div>
             </div>
 
-            <div>
-              <label className="text-xs text-slate-400 font-mono block mb-1">Select Bangalore Locality:</label>
-              <select 
-                value={scrapeLocation}
-                onChange={(e) => setScrapeLocation(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
-              >
-                <option value="Indiranagar Bengaluru">Indiranagar, Bangalore</option>
-                <option value="Koramangala Bengaluru">Koramangala, Bangalore</option>
-                <option value="HSR Layout Bengaluru">HSR Layout, Bangalore</option>
-                <option value="Whitefield Bengaluru">Whitefield, Bangalore</option>
-                <option value="Jayanagar Bengaluru">Jayanagar, Bangalore</option>
-                <option value="Malleshwaram Bengaluru">Malleshwaram, Bangalore</option>
-                <option value="Sarjapur Road Bengaluru">Sarjapur Road, Bangalore</option>
-              </select>
-            </div>
+            {/* ERROR BANNER */}
+            {payload?.error && (
+              <div className="p-4 rounded-xl bg-amber-950/60 border border-amber-800/80 flex items-start gap-3 text-xs text-amber-200">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-bold text-white">Live Data Feed Notice</div>
+                  <div>{payload.error}</div>
+                </div>
+              </div>
+            )}
 
-            <div className="flex items-end">
-              <button 
-                onClick={handleScrape}
-                disabled={scraping}
-                className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold text-xs p-3 rounded-xl transition flex items-center justify-center gap-2 font-mono cursor-pointer"
-              >
-                {scraping ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                {scraping ? 'Scraping Live...' : 'Scrape Google Maps Places Live'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* CATEGORY FILTER BUTTONS */}
-        <div className="flex flex-wrap gap-2 text-xs font-bold">
-          <button 
-            onClick={() => setActiveCategory('All')} 
-            className={`px-3.5 py-2 rounded-lg font-mono transition ${activeCategory === 'All' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-900 text-slate-300 border border-slate-800'}`}
-          >
-            All Categories
-          </button>
-          <button 
-            onClick={() => setActiveCategory('Cafes & Restaurants')} 
-            className={`px-3.5 py-2 rounded-lg font-mono transition ${activeCategory === 'Cafes & Restaurants' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-900 text-slate-300 border border-slate-800'}`}
-          >
-            ☕ Cafes
-          </button>
-          <button 
-            onClick={() => setActiveCategory('Real Estate & Builders')} 
-            className={`px-3.5 py-2 rounded-lg font-mono transition ${activeCategory === 'Real Estate & Builders' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-900 text-slate-300 border border-slate-800'}`}
-          >
-            🏢 Real Estate
-          </button>
-          <button 
-            onClick={() => setActiveCategory('Clinics & Healthcare')} 
-            className={`px-3.5 py-2 rounded-lg font-mono transition ${activeCategory === 'Clinics & Healthcare' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-900 text-slate-300 border border-slate-800'}`}
-          >
-            🩺 Clinics
-          </button>
-          <button 
-            onClick={() => setActiveCategory('Hotels & Staycations')} 
-            className={`px-3.5 py-2 rounded-lg font-mono transition ${activeCategory === 'Hotels & Staycations' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-900 text-slate-300 border border-slate-800'}`}
-          >
-            🏨 Resorts
-          </button>
-          <button 
-            onClick={() => setActiveCategory('Gyms & Fitness Studios')} 
-            className={`px-3.5 py-2 rounded-lg font-mono transition ${activeCategory === 'Gyms & Fitness Studios' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-900 text-slate-300 border border-slate-800'}`}
-          >
-            🏋️ Gyms
-          </button>
-        </div>
-
-        {/* LEADS CARDS GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredLeads.map((l, idx) => (
-            <div key={idx} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition space-y-4 relative overflow-hidden">
-              <div class="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800">{l.category}</span>
-                    <span className="text-xs text-slate-400 font-mono flex items-center gap-1"><MapPin className="w-3 h-3" /> {l.location}</span>
+            {/* LOADING SKELETON */}
+            {loading && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 animate-pulse">
+                    <div className="h-4 bg-slate-800 rounded w-1/3"></div>
+                    <div className="h-6 bg-slate-800 rounded w-3/4"></div>
+                    <div className="h-16 bg-slate-950 rounded"></div>
+                    <div className="h-20 bg-slate-950 rounded"></div>
                   </div>
-                  <h3 className="text-lg font-bold text-white mt-2">{l.businessName}</h3>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-mono text-emerald-400 font-bold">{l.priceTag}</div>
-                  <div className="text-[10px] text-slate-500 font-mono uppercase">Verified Lead</div>
-                </div>
+                ))}
               </div>
+            )}
 
-              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-xs font-mono">
-                <div className="text-amber-300 font-bold flex items-center justify-between">
-                  <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> Phone: {l.contactPhone}</span>
-                  <a href={l.mapsUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-400 font-bold hover:underline flex items-center gap-1">
-                    📍 Real Google Maps <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-                <div className="text-rose-400 font-medium"><span className="text-slate-400 font-bold">Issue:</span> {l.currentStatus}</div>
-                <div className="text-emerald-300 font-medium"><span class="text-slate-400 font-bold">Devify Builds:</span> {l.whatTheyNeed}</div>
-                <div className="text-slate-300"><span className="text-slate-400 font-bold">Why They Buy:</span> {l.whyDevifyHelps}</div>
+            {/* EMPTY STATE */}
+            {!loading && (!payload || !payload.leads || payload.leads.length === 0) && (
+              <div className="p-12 text-center rounded-2xl bg-slate-900 border border-slate-800 space-y-4 max-w-xl mx-auto my-12">
+                <FileQuestion className="w-12 h-12 text-amber-400 mx-auto opacity-80" />
+                <h3 className="text-lg font-bold text-white">Couldn't fetch live leads</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Overpass API is currently experiencing rate limits or timeouts. Please click the refresh button below to re-query live local business listings.
+                </p>
+                <button
+                  onClick={() => fetchLeads(true)}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-6 py-2.5 rounded-xl transition font-mono cursor-pointer"
+                >
+                  Try Refreshing Now
+                </button>
               </div>
+            )}
 
-              <div className="space-y-2">
-                <div className="text-xs font-bold text-slate-300 flex items-center justify-between">
-                  <span>WhatsApp Pitch Script</span>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => copyPitch(l.whatsappPitch, idx)}
-                      className="text-[11px] text-emerald-400 bg-emerald-950 px-2.5 py-1 rounded border border-emerald-800 hover:bg-emerald-900 cursor-pointer flex items-center gap-1"
-                    >
-                      {copiedIndex === idx ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                      {copiedIndex === idx ? 'Copied!' : 'Copy Script'}
-                    </button>
-                    <a 
-                      href={l.mapsUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-[11px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1 rounded flex items-center gap-1"
-                    >
-                      Open Live Contact on Google Maps <ExternalLink className="w-3 h-3" />
-                    </a>
+            {/* LEADS CARDS GRID */}
+            {!loading && payload && payload.leads && payload.leads.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {payload.leads.map((l) => (
+                  <div key={l.id} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition space-y-4 flex flex-col justify-between relative overflow-hidden">
+                    <div className="space-y-3">
+                      
+                      {/* CATEGORY & LOCATION HEADER */}
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800 flex items-center gap-1.5">
+                          {getCategoryIcon(l.category)}
+                          {l.category}
+                        </span>
+                        <span className="text-slate-400 font-mono flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-slate-500" /> {l.location}
+                        </span>
+                      </div>
+
+                      {/* BUSINESS NAME */}
+                      <h3 className="text-lg font-bold text-white tracking-tight leading-snug">{l.businessName}</h3>
+
+                      {/* SIGNAL & RECON DETAIL */}
+                      <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1.5 text-xs font-mono">
+                        <div className="text-rose-400 font-bold flex items-center justify-between">
+                          <span>🚨 Signal: {l.signal}</span>
+                          <a href={l.osmUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline flex items-center gap-1">
+                            OSM Record <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                        {l.phone && l.phone !== 'N/A' && (
+                          <div className="text-amber-300 flex items-center gap-1">
+                            <Phone className="w-3 h-3" /> Contact Phone: {l.phone}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* PROBLEM DESCRIPTION */}
+                      <div className="space-y-1">
+                        <div className="text-xs font-bold text-slate-400 font-mono">Problem / Growth Bottleneck:</div>
+                        <p className="text-xs text-slate-300 leading-relaxed font-sans">{l.problemDescription}</p>
+                      </div>
+
+                      {/* HOW DEVIFY HELPS */}
+                      <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-800/60 space-y-1">
+                        <div className="text-xs font-bold text-emerald-400 font-mono flex items-center gap-1.5">
+                          <Wrench className="w-3.5 h-3.5 text-emerald-400" /> How Devify Labs Can Help:
+                        </div>
+                        <p className="text-xs text-slate-200 leading-relaxed font-sans">{l.pitch}</p>
+                      </div>
+
+                    </div>
+
+                    {/* ACTION FOOTER */}
+                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                      <button
+                        onClick={() => copyPitch(l.pitch, l.id)}
+                        className="text-xs text-emerald-400 bg-emerald-950 border border-emerald-800 px-3 py-1.5 rounded-lg hover:bg-emerald-900 transition flex items-center gap-1.5 font-mono cursor-pointer"
+                      >
+                        {copiedId === l.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedId === l.id ? 'Copied Pitch!' : 'Copy Pitch'}
+                      </button>
+
+                      <a
+                        href={l.osmUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-slate-400 hover:text-white font-mono flex items-center gap-1"
+                      >
+                        View Details <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+
                   </div>
-                </div>
-                <div className="p-3 rounded-lg bg-slate-950 text-xs font-mono text-slate-300 border border-slate-800 leading-relaxed">
-                  {l.whatsappPitch}
-                </div>
+                ))}
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* TAB 2: WEBSITE AUDITOR & PITCHER */}
+        {activeTab === 'auditor' && (
+          <div className="space-y-6">
+            <div class="p-8 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+              <h2 className="text-xl font-bold text-white">Target Website Technical Auditor</h2>
+              <p className="text-xs text-slate-400">Analyze any existing business website URL to scan load latency, viewport configuration, and security headers.</p>
+              
+              <div className="flex gap-3 max-w-xl">
+                <input
+                  type="text"
+                  value={auditUrl}
+                  onChange={(e) => setAuditUrl(e.target.value)}
+                  placeholder="e.g. startupname.io or clientdomain.in"
+                  className="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500"
+                />
+                <button
+                  onClick={runAudit}
+                  disabled={auditLoading}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-3 rounded-xl transition text-xs font-mono cursor-pointer"
+                >
+                  {auditLoading ? 'Auditing...' : 'Run Audit'}
+                </button>
               </div>
             </div>
-          ))}
-        </div>
+
+            {auditResult && (
+              <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+                <div className="text-xs font-mono text-emerald-400 font-bold">Audit Results for {auditResult.domain || auditUrl}:</div>
+                <pre className="p-4 rounded-xl bg-slate-950 text-xs text-slate-300 font-mono whitespace-pre-wrap leading-relaxed border border-slate-800">
+                  {auditResult.emailPitch || auditResult.error || JSON.stringify(auditResult, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: PITCH CUSTOMIZER */}
+        {activeTab === 'customizer' && (
+          <div className="space-y-6">
+            <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+              <h2 className="text-xl font-bold text-white">Pitch & Proposal Customizer</h2>
+              <div className="p-6 rounded-xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs text-slate-300">
+                <div className="text-emerald-400 font-bold">White-Label Engineering Partner Pitch</div>
+                <pre className="whitespace-pre-wrap leading-relaxed">
+Hi Team,
+
+At Devify Labs, we operate as a plug-and-play white-label engineering partner for design agencies and growing local businesses. We handle full-stack web app builds (React, Next.js, Webflow, Node, AI Assistants) under your brand.
+
+⚡ Fast 10-14 Day Turnarounds
+⚡ Responsive Code & Quality Guarantee
+⚡ Per-project or Monthly Retainers
+
+Do you have any upcoming builds where an extra dev team could help ease bandwidth?
+                </pre>
+              </div>
+            </div>
+          </div>
+        )}
 
       </main>
 
       {/* FOOTER */}
       <footer className="border-t border-slate-800/80 bg-slate-950 py-4 text-center text-xs text-slate-500 font-mono">
-        Devify Labs Lead Portal • Live Vercel & Google Maps Engine • {new Date().getFullYear()}
+        Devify Labs Client Acquisition Portal • Powered by OpenStreetMap Overpass API • {new Date().getFullYear()}
       </footer>
 
     </div>
